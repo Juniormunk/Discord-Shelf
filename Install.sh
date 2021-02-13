@@ -2,6 +2,8 @@
 bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
 
 
+pip3 install 
+
 printf "#!/usr/bin/env bash
 
 # export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/host/run/dbus/system_bus_socket
@@ -26,7 +28,7 @@ if [ $? -eq 0 ]; then
 else
     printf 'Starting WiFi Connect\n'
 	var_id = cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2
-    wifi-connect --portal-ssid Discord_Shelf_%var_id
+    wifi-connect --portal-ssid "Discord_Shelf_%var_id"
 
 fi
 

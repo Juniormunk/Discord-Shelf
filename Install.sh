@@ -56,3 +56,6 @@ ExecStart=python3 /home/pi/Shelf.py
 [Install]
 WantedBy=multi-user.target" >> /etc/systemd/system/discordshelf.service
 
+systemctl enable discordshelf
+
+reboot

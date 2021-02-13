@@ -26,7 +26,7 @@ if [ $? -eq 0 ]; then
 else
     printf 'Starting WiFi Connect\n'
 	var_id = cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2
-    wifi-connect --portal-ssid Discord_Shelf%{var_id}
+    wifi-connect --portal-ssid Discord_Shelf_%var_id
 
 fi
 
@@ -34,5 +34,25 @@ fi
 
 chmod +x /home/pi/WIFIScript.sh
 
-lines="*/5 * * * * ./home/pi/WIFIScript.sh\n @reboot ./home/pi/WIFIScript.sh"
+lines="*/5 * * * * ./home/pi/WIFIScript.sh\n @reboot ./home/pi/WIFIScript.sh" 
 ( crontab -u root -l; echo "$lines" ) | crontab -u root -
+
+cd /home/pi/
+wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Shelf.py
+
+
+printf "[Unit]
+Description=Discord Shelf
+After=network.target
+StartLimitIntervalSec=0
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+Group=root
+ExecStart=python3 /home/pi/Shelf.py
+
+[Install]
+WantedBy=multi-user.target" >> /etc/systemd/system/discordshelf.service
+

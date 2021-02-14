@@ -21,11 +21,11 @@ wget --spider http://google.com 2>&1
 
 if [ $? -eq 0 ]; then
     printf 'Skipping WiFi Connect\n'
-	printf "wifi-connect --portal-ssid Discord_Shelf_$var_id" > /home/pi/hello.txt
+	printf "wifi-connect --portal-ssid Discord_Shelf_"$var_id > /home/pi/hello.txt
 
 else
     printf 'Starting WiFi Connect\n'
     wifi-connect --portal-ssid Discord_Shelf_$var_id
-	printf "wifi-connect --portal-ssid Discord_Shelf_$var_id" > /home/pi/hello.txt
+	printf "wifi-connect --portal-ssid Discord_Shelf_"$var_id > /home/pi/hello.txt
 
 fi

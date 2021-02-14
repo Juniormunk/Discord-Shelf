@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
 
+var_id = cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2
+
 
 printf "#!/usr/bin/env bash
 
@@ -25,7 +27,6 @@ if [ $? -eq 0 ]; then
     printf 'Skipping WiFi Connect\n'
 else
     printf 'Starting WiFi Connect\n'
-	var_id = cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2
     wifi-connect --portal-ssid "Discord_Shelf_$var_id"
 
 fi

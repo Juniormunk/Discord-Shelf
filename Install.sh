@@ -32,7 +32,6 @@ if [ -f /etc/modprobe.d/raspi-blacklist.conf ]; then
 else
   echo 'File raspi-blacklist.conf does not exist, skip this step.'
 fi
-bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
 
 cd /home/pi/
 
@@ -50,10 +49,10 @@ wget -O WIFIScript.sh https://raw.githubusercontent.com/Juniormunk/Discord-Shelf
 chmod +x /home/pi/WIFIScript.sh
 
 lines="*/5 * * * * /home/pi/WIFIScript.sh"
-( crontab -u pi -l; echo "$lines" ) | crontab -u pi -
+( crontab -u root -l; echo "$lines" ) | crontab -root pi -
 
 lines="@reboot /home/pi/WIFIScript.sh" 
-( crontab -u pi -l; echo "$lines" ) | crontab -u pi -
+( crontab -root pi -l; echo "$lines" ) | crontab -root pi -
 
 wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Shelf.py
 
@@ -74,3 +73,8 @@ ExecStart=python3 /home/pi/Shelf.py
 WantedBy=multi-user.target" > /etc/systemd/system/discordshelf.service
 
 systemctl enable discordshelf
+
+bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
+
+
+reboot

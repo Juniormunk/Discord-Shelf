@@ -2,8 +2,6 @@
 #bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
 
 
-pip3 install 
-
 printf "#!/usr/bin/env bash
 
 # export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/host/run/dbus/system_bus_socket
@@ -37,7 +35,7 @@ fi
 chmod +x /home/pi/WIFIScript.sh
 
 lines="*/5 * * * * ./home/pi/WIFIScript.sh\n @reboot ./home/pi/WIFIScript.sh" 
-( crontab -u root -l; echo "$lines" ) | crontab -u root -
+( crontab -u pi -l; echo "$lines" ) | crontab -u pi -
 
 cd /home/pi/
 wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Shelf.py

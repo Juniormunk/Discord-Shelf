@@ -43,18 +43,18 @@ wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main
 
 printf "[Unit]
 Description=Discord Shelf
-After=network.target
-StartLimitIntervalSec=0
+
 [Service]
 Type=simple
 Restart=always
 RestartSec=1
+WorkingDirectory=/home/pi
 User=root
 Group=root
 ExecStart=python3 /home/pi/Shelf.py
 
 [Install]
-WantedBy=multi-user.target" >> /etc/systemd/system/discordshelf.service
+WantedBy=multi-user.target" > /etc/systemd/system/discordshelf.service
 
 systemctl enable discordshelf
 

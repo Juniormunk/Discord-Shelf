@@ -30,7 +30,7 @@ else
 
 fi
 
-# Start your application here." > /home/pi/WIFIScript.sh
+"> /home/pi/WIFIScript.sh
 
 chmod +x /home/pi/WIFIScript.sh
 

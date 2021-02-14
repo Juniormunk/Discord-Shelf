@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-var_id = $(cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2)
-
 # export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/host/run/dbus/system_bus_socket
 # ^^^ this can cause barfing and isn't needed
 
@@ -21,11 +19,9 @@ wget --spider http://google.com 2>&1
 
 if [ $? -eq 0 ]; then
     printf 'Skipping WiFi Connect\n'
-	printf "wifi-connect --portal-ssid Discord_Shelf_"$var_id > /home/pi/hello.txt
 
 else
     printf 'Starting WiFi Connect\n'
-    wifi-connect --portal-ssid Discord_Shelf_$var_id
-	printf "wifi-connect --portal-ssid Discord_Shelf_"$var_id > /home/pi/hello.txt
+    wifi-connect --portal-ssid Discord_Shelf
 
 fi

@@ -6,7 +6,6 @@ cd /home/pi/
 apt install python3-pip
 pip3 install discord
 pip3 install asyncio
-pip3 install json
 pip3 install board
 pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 pip3 install adafruit-ads1x15

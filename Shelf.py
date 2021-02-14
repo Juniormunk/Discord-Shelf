@@ -64,7 +64,7 @@ if not os.path.exists('/boot/shelf_config.json'):
   ]
 }''')
 
-logging.basicConfig(filename='/boot/latest.log',level=logging.ERROR)
+logging.basicConfig(filename='/boot/latest.log',level=logging.DEBUG)
 
 
 def getConfigBotToken():

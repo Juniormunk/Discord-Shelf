@@ -32,11 +32,11 @@ if [ -f /etc/modprobe.d/raspi-blacklist.conf ]; then
 else
   echo 'File raspi-blacklist.conf does not exist, skip this step.'
 fi
-#bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
+bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
 
 cd /home/pi/
 
-apt install python3-pip
+apt -y install python3-pip
 pip3 install discord
 pip3 install asyncio
 pip3 install board

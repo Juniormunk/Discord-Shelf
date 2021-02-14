@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
 
-var_id = cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2
+var_id = $(cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2)
 
 
 printf "#!/usr/bin/env bash

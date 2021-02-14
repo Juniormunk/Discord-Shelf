@@ -3,7 +3,7 @@
 
 cd /home/pi/
 
-wget -O install.sh https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/WIFIScript.sh
+wget -O WIFIScript.sh https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/WIFIScript.sh
 
 chmod +x /home/pi/WIFIScript.sh
 

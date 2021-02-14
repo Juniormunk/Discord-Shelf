@@ -27,7 +27,7 @@ if [ $? -eq 0 ]; then
     printf 'Skipping WiFi Connect\n'
 else
     printf 'Starting WiFi Connect\n'
-    wifi-connect --portal-ssid "Discord_Shelf_$var_id"
+    wifi-connect --portal-ssid Discord_Shelf_$var_id
 
 fi
 

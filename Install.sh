@@ -7,7 +7,7 @@ wget -O WIFIScript.sh https://raw.githubusercontent.com/Juniormunk/Discord-Shelf
 
 chmod +x /home/pi/WIFIScript.sh
 
-lines="*/5 * * * * ./home/pi/WIFIScript.sh\n"
+lines="*/5 * * * * ./home/pi/WIFIScript.sh"
 ( crontab -u pi -l; echo "$lines" ) | crontab -u pi -
 
 lines="@reboot ./home/pi/WIFIScript.sh" 

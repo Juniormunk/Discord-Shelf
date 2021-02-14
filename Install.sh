@@ -26,7 +26,7 @@ if [ $? -eq 0 ]; then
 else
     printf 'Starting WiFi Connect\n'
 	var_id = cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2
-    wifi-connect --portal-ssid "Discord_Shelf_%var_id"
+    wifi-connect --portal-ssid "Discord_Shelf_$var_id"
 
 fi
 

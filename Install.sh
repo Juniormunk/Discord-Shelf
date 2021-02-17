@@ -43,11 +43,6 @@ pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 pip3 install adafruit-ads1x15
 pip3 install schedule
 
-
-wget -O WIFIScript.sh https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/WIFIScript.sh
-
-chmod +x /home/pi/WIFIScript.sh
-
 wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Shelf.py
 
 
@@ -66,25 +61,11 @@ ExecStart=python3 /home/pi/Shelf.py
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/discordshelf.service
 
-printf "[Unit]
-Description=Balena wifi connect service
-After=NetworkManager.service
-
-[Service]
-Type=simple
-ExecStart=/home/pi/WIFIScript.sh
-Restart=always
-Type=simple
-User=root
-
-[Install]
-WantedBy=multi-user.target" > /etc/systemd/system/wifi-connect-start.service
-
 systemctl enable discordshelf
 
-systemctl enable wifi-connect-start
-
-bash <(curl -L https://github.com/resin-io/resin-wifi-connect/raw/master/scripts/raspbian-install.sh) -- -y
+dpkg -i davesteele-comitup-apt-source*.deb
+apt-get update
+sudo apt-get install comitup
 
 
 reboot

@@ -12,6 +12,8 @@ import threading
 import board
 import neopixel
 import Adafruit_ADS1x15
+import urllib.request
+
 
 
 config = None
@@ -105,6 +107,7 @@ class LightStatus(Enum):
     Loading = 1
     JSONError = 2
     Loaded = 3
+    WIFIError = 4
 
 lightStatus = LightStatus.Loading
 
@@ -160,7 +163,10 @@ def lightThread():
     except:
         step = .08
     while True:
-        brightness = (adc.read_adc(0, gain=1)-26352)/-26352.0
+        try:
+            brightness = (adc.read_adc(0, gain=1)-26352)/-26352.0
+        except:
+            brightness = 1
         if brightness<.05:
             brightness = 0
         if brightness>.95:
@@ -197,6 +203,10 @@ def lightThread():
                     pixels[i] = [0,0,255*brightness*mod_brightness]
         if(lightStatus == LightStatus.JSONError):
                     pixels[1] = [255*brightness*mod_brightness,0,0]
+        if(lightStatus == LightStatus.Loading):
+            for slot in slots:
+                for i in slot:
+                    pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
         time.sleep(.01);
 x = threading.Thread(target=lightThread)
 
@@ -306,7 +316,17 @@ async def on_ready():
 async def on_member_update(before, after):
     updateFriendStatus()
 
+def checkInternetUrllib(url='http://google.com', timeout=3):
+    try:
+        urllib.request.urlopen(url, timeout=timeout)
+        return True
+    except Exception as e:
+        return False
 
+while(checkInternetUrllib()==false):
+    time.sleep(1)
+    WIFIError
+    
 client.run(getConfigBotToken())
 
 

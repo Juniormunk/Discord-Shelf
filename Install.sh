@@ -63,9 +63,14 @@ WantedBy=multi-user.target" > /etc/systemd/system/discordshelf.service
 
 systemctl enable discordshelf
 
-dpkg -i davesteele-comitup-apt-source*.deb
-apt-get update
-sudo apt-get install comitup
+apt-get install comitup
+
+
+rm /etc/wpa_supplicant/wpa_supplicant.conf
+
+systemctl disable systemd.resolved
+
+systemctl mask systemd.resolved
 
 
 reboot

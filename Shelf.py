@@ -22,6 +22,19 @@ slots = None
 app = Flask(__name__)
 
 
+class LightStatus(Enum):
+    Loading = 1
+    JSONError = 2
+    Loaded = 3
+    WIFIError = 4
+
+def checkInternetUrllib(url='http://google.com', timeout=3):
+    try:
+        urllib.request.urlopen(url, timeout=timeout)
+        return True
+    except Exception as e:
+        return False
+
 pixels = neopixel.NeoPixel(board.D18, 30)
 
 if os.path.exists("/boot/latest.log"):
@@ -280,12 +293,6 @@ y = threading.Thread(target=serverThread)
 
 y.start()
 
-class LightStatus(Enum):
-    Loading = 1
-    JSONError = 2
-    Loaded = 3
-    WIFIError = 4
-
 lightStatus = LightStatus.Loading
 
 class Friend():
@@ -359,6 +366,7 @@ def lightThread():
             direction=1
 
         slots_updated = []
+        updated_all = False
             
         if(lightStatus == LightStatus.Loaded):
             for friend in friends:
@@ -380,21 +388,31 @@ def lightThread():
                         if(friend.status == friend.Status.IDError):
                             pixels[i] = [255*brightness,0,255*brightness]
 
-        for i in range(len(slots)):
-            if i not in slots_updated:
-                for x in slots[i]:
-                    pixels[x] = [0,0,0]
+        
             
         if(lightStatus == LightStatus.Loading):
             for slot in slots:
                 for i in slot:
                     pixels[i] = [0,0,255*brightness*mod_brightness]
-        if(lightStatus == LightStatus.JSONError):
-                    pixels[1] = [255*brightness*mod_brightness,0,0]
-        if(lightStatus == LightStatus.Loading):
+        if(lightStatus == LightStatus.WIFIError):
+            updated_all=True
+            pixels[1] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
             for slot in slots:
                 for i in slot:
                     pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
+        if(lightStatus == LightStatus.JSONError):
+            updated_all=True
+            pixels[1] = [255*brightness*mod_brightness,0,0]
+        if(lightStatus == LightStatus.Loading):
+            updated_all=True
+            for slot in slots:
+                for i in slot:
+                    pixels[i] = [0,0,255*brightness*mod_brightness]
+        if not updated_all:
+            for i in range(len(slots)):
+                if i not in slots_updated:
+                    for x in slots[i]:
+                        pixels[x] = [0,0,0]
         time.sleep(.01);
         
 x = threading.Thread(target=lightThread)
@@ -404,11 +422,14 @@ slots = getConfigSlots()
 x.start()
 
 
+while(checkInternetUrllib()==False):
+    time.sleep(1)
+    lightStatus = LightStatus.WIFIError
 
 intents = intents = discord.Intents.all()
 client = discord.Client(intents=intents)
         
-lightStatus = LightStatus.Loaded
+lightStatus = LightStatus.Loading
 
 def updateUsernames():
     for friend in friends:
@@ -471,6 +492,7 @@ def loop():
 
 @client.event
 async def on_ready():
+    global lightStatus
     logging.info('We have logged in as {0.user}'.format(client))
     logging.info('Connected to server {0} aka {1}'.format(getConfigGuildID(), getGuild().name))
     loadConfig()
@@ -480,7 +502,8 @@ async def on_ready():
 
     schedule.every(60).seconds.do(loop)
     schedule.every(20).minutes.do(updateUsernames)
-
+    lightStatus = LightStatus.Loaded
+    
     while True:
         schedule.run_pending()
         await asyncio.sleep(1)
@@ -489,16 +512,6 @@ async def on_ready():
 async def on_member_update(before, after):
     updateFriendStatus()
 
-def checkInternetUrllib(url='http://google.com', timeout=3):
-    try:
-        urllib.request.urlopen(url, timeout=timeout)
-        return True
-    except Exception as e:
-        return False
-
-while(checkInternetUrllib()==False):
-    time.sleep(1)
-    lightStatus = LightStatus.WIFIError
 
 lastBotToken = getConfigBotToken()
 client.run(getConfigBotToken())

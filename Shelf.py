@@ -336,6 +336,12 @@ def lightThread():
         logging.error(e)
         step = .08
     while True:
+
+        try:
+            step = getConfigFadeSpeed()
+        except:
+            pass
+        
         try:
             brightness = (adc.read_adc(0, gain=1)-26352)/-26352.0
         except:

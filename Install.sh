@@ -42,6 +42,7 @@ pip3 install board
 pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 pip3 install adafruit-ads1x15
 pip3 install schedule
+pip3 install flask
 
 wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Shelf.py
 

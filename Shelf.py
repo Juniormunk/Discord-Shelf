@@ -13,11 +13,14 @@ import board
 import neopixel
 import Adafruit_ADS1x15
 import urllib.request
+from flask import Flask,render_template,request
 
 
 
 config = None
 slots = None
+app = Flask(__name__)
+
 
 pixels = neopixel.NeoPixel(board.D18, 30)
 
@@ -65,9 +68,26 @@ if not os.path.exists('/boot/shelf_config.json'):
     }
   ]
 }''')
-
+        file.close()
+        
 logging.basicConfig(filename='/boot/latest.log',level=logging.DEBUG)
 
+        
+def openConfig():
+    global config
+    global lightStatus
+    try:
+        with open('/boot/shelf_config.json', 'r') as infile:
+            config = json.loads(infile.read())
+            infile.close()
+    except json.decoder.JSONDecodeError:
+        logging.error("Could not parsing json file!")
+        lightStatus = LightStatus.JSONError
+        x.start()
+        while(True):
+            time.sleep(1)
+            
+openConfig()
 
 def getConfigBotToken():
     return config["Discord Bot Token"]
@@ -102,6 +122,114 @@ def getConfigFadeSpeed():
 def saveConfig():
     with open('/boot/shelf_config.json', 'w') as outfile:
         json.dump(config, outfile, indent = 2)
+        outfile.close()
+
+@app.route('/', methods = ['POST', 'GET'])
+def homePage():
+    global config
+        
+    output = ""
+    output += "<html>"
+    output += "<head>"
+    output += '''<link rel="icon" type="image/svg+xml" href="http://discord.com/assets/41484d92c876f76b20c7f746221e8151.svg">'''
+    output += "<title>Discord Shelf</title>"
+    output += '''<style type="text/css">
+                        #container { 
+                        width:70%;
+                        height:80%;
+                        padding:5px 7px 5px 5px; 
+                        }
+                        #txtarea {
+                        font-size:16;
+                        resize:none;
+                        display:block;
+                        background: #23272A;
+                        width:99%;
+                        height:99%;
+                        padding:0.5%;
+                        margin:0;
+                        overflow-y: scroll;
+                        overflow-x: scroll;
+                            color: #FFFFFF;
+                        }
+                        .button {
+                          background-color: #4CAF50; /* Green */
+                          border: none;
+                          color: white;
+                          padding: 15px 32px;
+                          text-align: center;
+                          text-decoration: none;
+                          display: inline-block;
+                          font-size: 16px;
+                          margin: 4px 2px;
+                          cursor: pointer;
+                        }
+                        .button4 {background-color: #e7e7e7; color: black;} /* Gray */ 
+                        </style>'''
+    output += "</head>"
+    output += "<center>"
+    output += '''<body style="background-color:#23272A;">'''
+    output += '''<h1 style="color:#7289DA;">Welcome to the discord shelf configuration editor. Below you will find a json file that will allow you to configure your shelf.</h1>'''
+    output += '''<div id="container">'''
+    if request.method == 'GET':
+        with open('/boot/shelf_config.json', 'r') as infile:
+                file = infile.read()
+                infile.close()
+        output += '''<form method='POST' enctype='multipart/form-data' action='/'>
+                    <textarea id="txtarea" name="json">'''+file+'''</textarea>
+                    <br>
+                    <br>
+                    <br>
+                    <br>
+                    <input class="button button4" type="submit" value="Apply">
+                    </form>'''
+    if request.method == 'POST':
+        try:
+            config = json.loads(request.form["json"])
+            saveConfig()
+            loadConfig()
+            updateFriendStatus()
+            with open('/boot/shelf_config.json', 'r') as infile:
+                file = infile.read()
+                infile.close()
+            output += '''<form method='POST' enctype='multipart/form-data' action='/'>
+                    <textarea id="txtarea" name="json">'''+file+'''</textarea>
+                    <br>
+                    <br>
+                    <br>
+                    <br>
+                    <input class="button button4" type="submit" value="Apply">
+                    </form>'''
+        except:
+            with open('/boot/shelf_config.json', 'r') as infile:
+                file = infile.read()
+                infile.close()
+            config = json.loads(file)
+            saveConfig()
+            loadConfig()
+            updateFriendStatus()
+            output+='''<h1 style="color:RED;">Error parsing json file</h1>'''
+            output += '''<form method='POST' enctype='multipart/form-data' action='/'>
+                    <textarea id="txtarea" name="json">'''+request.form["json"]+'''</textarea>
+                    <br>
+                    <br>
+                    <br>
+                    <br>
+                    <input class="button button4" type="submit" value="Apply">
+                    </form>'''  
+   
+    output += '''</div>'''
+    output += "</center>"
+    output += "</body>"
+    output += "</html>"
+    return output
+
+def serverThread():
+    app.run(host='0.0.0.0', port=80)
+
+y = threading.Thread(target=serverThread)
+
+y.start()
 
 class LightStatus(Enum):
     Loading = 1
@@ -110,7 +238,6 @@ class LightStatus(Enum):
     WIFIError = 4
 
 lightStatus = LightStatus.Loading
-
 
 class Friend():
     class Status(Enum):
@@ -147,12 +274,8 @@ class Friend():
             return True
         else:
             return False
-
-    
+ 
 friends = []
-
-
-
 
 def lightThread():
     adc = Adafruit_ADS1x15.ADS1115()
@@ -178,11 +301,14 @@ def lightThread():
             
         if(mod_brightness<((step*2)) and direction<0):
             direction=1
+
+        slots_updated = []
             
         if(lightStatus == LightStatus.Loaded):
             for friend in friends:
                 if((friend.slot>=0) and friend.slot<len(slots)):
                     for i in slots[friend.slot]:
+                        slots_updated.append(friend.slot)
                         if(friend.status == friend.Status.Online):
                             pixels[i] = [0,0,255*brightness]
                         if(friend.status == friend.Status.Offline):
@@ -197,6 +323,12 @@ def lightThread():
                             pixels[i] = [60*brightness,0,0]
                         if(friend.status == friend.Status.IDError):
                             pixels[i] = [255*brightness,0,255*brightness]
+
+        for i in range(len(slots)):
+            if i not in slots_updated:
+                for x in slots[i]:
+                    pixels[x] = [0,0,0]
+            
         if(lightStatus == LightStatus.Loading):
             for slot in slots:
                 for i in slot:
@@ -208,23 +340,9 @@ def lightThread():
                 for i in slot:
                     pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
         time.sleep(.01);
+        
 x = threading.Thread(target=lightThread)
 
-        
-def openConfig():
-    global config
-    global lightStatus
-    try:
-        with open('/boot/shelf_config.json', 'r') as infile:
-            config = json.loads(infile.read())
-    except json.decoder.JSONDecodeError:
-        logging.error("Could not parsing json file!")
-        lightStatus = LightStatus.JSONError
-        x.start()
-        while(True):
-            time.sleep(1)
-            
-openConfig()
 slots = getConfigSlots()
 
 x.start()
@@ -267,6 +385,7 @@ def updateFriendStatus():
 
 
 def loadConfig():
+    friends.clear();
     for i in range(0, len(config["Users"])):
         friend = Friend(getConfigUserName(i), getConfigUserID(i), getConfigUserSlot(i), getConfigUserMobileStatus(i), getConfigUserFavoriteGames(i), None,i)
         friends.append(friend)
@@ -290,8 +409,6 @@ def loadConfig():
         for friend in friends:
                 if(friend.getID() == int(mem.id)):
                     friend.member = mem
-                    
-
 
 def loop():
     updateFriendStatus()
@@ -323,10 +440,11 @@ def checkInternetUrllib(url='http://google.com', timeout=3):
     except Exception as e:
         return False
 
-while(checkInternetUrllib()==false):
+while(checkInternetUrllib()==False):
     time.sleep(1)
-    WIFIError
-    
+    lightStatus = LightStatus.WIFIError
+
+
 client.run(getConfigBotToken())
 
 

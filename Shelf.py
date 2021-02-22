@@ -489,6 +489,11 @@ def loadConfig():
 
 def loop():
     updateFriendStatus()
+    if(checkInternetUrllib()==False):
+        time.sleep(1)
+        lightStatus = LightStatus.WIFIError
+    else:
+        lightStatus = LightStatus.Loaded
 
 @client.event
 async def on_ready():
@@ -500,7 +505,7 @@ async def on_ready():
     updateFriendStatus()
 
 
-    schedule.every(60).seconds.do(loop)
+    schedule.every(120).seconds.do(loop)
     schedule.every(20).minutes.do(updateUsernames)
     lightStatus = LightStatus.Loaded
     

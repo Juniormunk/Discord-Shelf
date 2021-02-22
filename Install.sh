@@ -64,7 +64,7 @@ WantedBy=multi-user.target" > /etc/systemd/system/discordshelf.service
 
 systemctl enable discordshelf
 
-apt-get install comitup
+apt-get -y install comitup
 
 
 rm /etc/wpa_supplicant/wpa_supplicant.conf

@@ -8,4 +8,4 @@ wget -O install.sh https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/ma
 
 sudo chmod +x install.sh
 
-sudo ./install.sh
+nohup sudo ~/install.sh >> ~/install.log 2>&1 &

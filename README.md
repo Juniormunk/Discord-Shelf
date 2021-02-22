@@ -5,5 +5,7 @@
 Install...
 
 wget -O install.sh https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Install.sh
+
 sudo chmod +x install.sh
+
 sudo ./install.sh

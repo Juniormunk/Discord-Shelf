@@ -14,12 +14,14 @@ import neopixel
 import Adafruit_ADS1x15
 import urllib.request
 from flask import Flask,render_template,request
+import NetworkManager
 
 
 
 config = None
 slots = None
 app = Flask(__name__)
+
 
 
 class LightStatus(Enum):
@@ -140,6 +142,139 @@ def saveConfig():
     with open('/boot/shelf_config.json', 'w') as outfile:
         json.dump(config, outfile, indent = 2)
         outfile.close()
+
+lightStatus = LightStatus.Loading
+
+class Friend():
+    class Status(Enum):
+        Online = 1
+        Ingame = 2
+        Offline = 3
+        Away = 4
+        Dnd = 5
+        IDError=6
+        Favgame = 7
+    def __init__(self, name_, id_, slot_, mobileStatus_, favoriteGames_, member_,index_): 
+        self._name = name_
+        self.index = index_
+        self.member = member_
+        self._id = id_
+        self.slot = slot_
+        self.mobileStatus = mobileStatus_
+        self.favoriteGames = favoriteGames_
+        self.status = self.Status.Offline
+    def setID(self, id):
+        self._id = id
+        setConfigUserID(self.index, id)
+        saveConfig()
+    def getID(self):
+        return self._id
+    def setName(self, name):
+        self._name = name
+        setConfigUserName(self.index, name)
+        saveConfig()
+    def getName(self):
+        return self._name
+    def isFavGame(self, game):
+        if game.upper() in (name.upper() for name in self.favoriteGames):
+            return True
+        else:
+            return False
+ 
+friends = []
+
+def lightThread():
+    adc = Adafruit_ADS1x15.ADS1115()
+    mod_brightness = .5
+    direction = -1
+    try:
+        step = getConfigFadeSpeed()
+    except Exception as e:
+        logging.error(e)
+        step = .08
+    while True:
+
+        try:
+            step = getConfigFadeSpeed()
+        except:
+            pass
+        
+        try:
+            brightness = (adc.read_adc(0, gain=1)-26352)/-26352.0
+        except:
+            brightness = 1
+        if brightness<.05:
+            brightness = 0
+        if brightness>.95:
+            brightness = 1
+            
+        mod_brightness += step*direction
+        if(mod_brightness>(1-(step*2)) and direction>0):
+            direction=-1
+            
+        if(mod_brightness<((step*2)) and direction<0):
+            direction=1
+
+        slots_updated = []
+        updated_all = False
+            
+        if(lightStatus == LightStatus.Loaded):
+            for friend in friends:
+                if((friend.slot>=0) and friend.slot<len(slots)):
+                    for i in slots[friend.slot]:
+                        slots_updated.append(friend.slot)
+                        if(friend.status == friend.Status.Online):
+                            pixels[i] = [0,0,255*brightness]
+                        if(friend.status == friend.Status.Offline):
+                            pixels[i] = [0,0,0]
+                        if(friend.status == friend.Status.Away):
+                            pixels[i] = [255*brightness,255*brightness,0]
+                        if(friend.status == friend.Status.Favgame):
+                            pixels[i] = [0,255*brightness*mod_brightness,0]
+                        if(friend.status == friend.Status.Ingame):
+                            pixels[i] = [0,255*brightness,0]
+                        if(friend.status == friend.Status.Dnd):
+                            pixels[i] = [60*brightness,0,0]
+                        if(friend.status == friend.Status.IDError):
+                            pixels[i] = [255*brightness,0,255*brightness]
+
+        
+            
+        if(lightStatus == LightStatus.Loading):
+            for slot in slots:
+                for i in slot:
+                    pixels[i] = [0,0,255*brightness*mod_brightness]
+        if(lightStatus == LightStatus.WIFIError):
+            updated_all=True
+            pixels[1] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
+            for slot in slots:
+                for i in slot:
+                    pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
+        if(lightStatus == LightStatus.JSONError):
+            updated_all=True
+            pixels[1] = [255*brightness*mod_brightness,0,0]
+        if(lightStatus == LightStatus.Loading):
+            updated_all=True
+            for slot in slots:
+                for i in slot:
+                    pixels[i] = [0,0,255*brightness*mod_brightness]
+        if not updated_all:
+            for i in range(len(slots)):
+                if i not in slots_updated:
+                    for x in slots[i]:
+                        pixels[x] = [0,0,0]
+        time.sleep(.01);
+        
+x = threading.Thread(target=lightThread)
+
+slots = getConfigSlots()
+
+x.start()
+
+while(checkInternetUrllib()==False):
+    time.sleep(1)
+    lightStatus = LightStatus.WIFIError
+
 
 @app.route('/', methods = ['POST', 'GET'])
 def homePage():
@@ -293,139 +428,6 @@ y = threading.Thread(target=serverThread)
 
 y.start()
 
-lightStatus = LightStatus.Loading
-
-class Friend():
-    class Status(Enum):
-        Online = 1
-        Ingame = 2
-        Offline = 3
-        Away = 4
-        Dnd = 5
-        IDError=6
-        Favgame = 7
-    def __init__(self, name_, id_, slot_, mobileStatus_, favoriteGames_, member_,index_): 
-        self._name = name_
-        self.index = index_
-        self.member = member_
-        self._id = id_
-        self.slot = slot_
-        self.mobileStatus = mobileStatus_
-        self.favoriteGames = favoriteGames_
-        self.status = self.Status.Offline
-    def setID(self, id):
-        self._id = id
-        setConfigUserID(self.index, id)
-        saveConfig()
-    def getID(self):
-        return self._id
-    def setName(self, name):
-        self._name = name
-        setConfigUserName(self.index, name)
-        saveConfig()
-    def getName(self):
-        return self._name
-    def isFavGame(self, game):
-        if game.upper() in (name.upper() for name in self.favoriteGames):
-            return True
-        else:
-            return False
- 
-friends = []
-
-def lightThread():
-    adc = Adafruit_ADS1x15.ADS1115()
-    mod_brightness = .5
-    direction = -1
-    try:
-        step = getConfigFadeSpeed()
-    except Exception as e:
-        logging.error(e)
-        step = .08
-    while True:
-
-        try:
-            step = getConfigFadeSpeed()
-        except:
-            pass
-        
-        try:
-            brightness = (adc.read_adc(0, gain=1)-26352)/-26352.0
-        except:
-            brightness = 1
-        if brightness<.05:
-            brightness = 0
-        if brightness>.95:
-            brightness = 1
-            
-        mod_brightness += step*direction
-        if(mod_brightness>(1-(step*2)) and direction>0):
-            direction=-1
-            
-        if(mod_brightness<((step*2)) and direction<0):
-            direction=1
-
-        slots_updated = []
-        updated_all = False
-            
-        if(lightStatus == LightStatus.Loaded):
-            for friend in friends:
-                if((friend.slot>=0) and friend.slot<len(slots)):
-                    for i in slots[friend.slot]:
-                        slots_updated.append(friend.slot)
-                        if(friend.status == friend.Status.Online):
-                            pixels[i] = [0,0,255*brightness]
-                        if(friend.status == friend.Status.Offline):
-                            pixels[i] = [0,0,0]
-                        if(friend.status == friend.Status.Away):
-                            pixels[i] = [255*brightness,255*brightness,0]
-                        if(friend.status == friend.Status.Favgame):
-                            pixels[i] = [0,255*brightness*mod_brightness,0]
-                        if(friend.status == friend.Status.Ingame):
-                            pixels[i] = [0,255*brightness,0]
-                        if(friend.status == friend.Status.Dnd):
-                            pixels[i] = [60*brightness,0,0]
-                        if(friend.status == friend.Status.IDError):
-                            pixels[i] = [255*brightness,0,255*brightness]
-
-        
-            
-        if(lightStatus == LightStatus.Loading):
-            for slot in slots:
-                for i in slot:
-                    pixels[i] = [0,0,255*brightness*mod_brightness]
-        if(lightStatus == LightStatus.WIFIError):
-            updated_all=True
-            pixels[1] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
-            for slot in slots:
-                for i in slot:
-                    pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
-        if(lightStatus == LightStatus.JSONError):
-            updated_all=True
-            pixels[1] = [255*brightness*mod_brightness,0,0]
-        if(lightStatus == LightStatus.Loading):
-            updated_all=True
-            for slot in slots:
-                for i in slot:
-                    pixels[i] = [0,0,255*brightness*mod_brightness]
-        if not updated_all:
-            for i in range(len(slots)):
-                if i not in slots_updated:
-                    for x in slots[i]:
-                        pixels[x] = [0,0,0]
-        time.sleep(.01);
-        
-x = threading.Thread(target=lightThread)
-
-slots = getConfigSlots()
-
-x.start()
-
-
-while(checkInternetUrllib()==False):
-    time.sleep(1)
-    lightStatus = LightStatus.WIFIError
-
 intents = intents = discord.Intents.all()
 client = discord.Client(intents=intents)
         
@@ -469,7 +471,6 @@ def loadConfig():
     for friend in friends:
         if((int(friend.getID())==-1) or(int(friend.getID())==0)):
             name = friend.getName()
-            print (name)
             member = None
             for mem in getGuildMembers():
                 if(mem.name == name):
@@ -519,6 +520,14 @@ async def on_member_update(before, after):
 
 
 lastBotToken = getConfigBotToken()
+if (getConfigBotToken()=="" or getConfigBotToken()==0):
+    lightStatus = LightStatus.JSONError
+    while True:
+        time.sleep(1)
+    
 client.run(getConfigBotToken())
+
+    
+
 
 

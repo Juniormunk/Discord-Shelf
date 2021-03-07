@@ -43,6 +43,7 @@ pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 pip3 install adafruit-ads1x15
 pip3 install schedule
 pip3 install flask
+pip3 install NetworkManager
 
 wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Shelf.py
 
@@ -72,6 +73,17 @@ rm /etc/wpa_supplicant/wpa_supplicant.conf
 systemctl disable systemd.resolved
 
 systemctl mask systemd.resolved
+
+sed -i 's/# ap_name: comitup-<nn>/ ap_name: DiscordShelf-<nnnn>/' /etc/comitup.conf
+
+CPUID=$(awk '/Serial/ {print $3}' /proc/cpuinfo | sed 's/.*\(....\)/\1/')
+
+hostnamectl --pretty set-hostname "discordshelf"$CPUID
+
+sudo hostnamectl set-hostname "discordshelf"$CPUID
+
+sudo nmcli general hostname "discordshelf"$CPUID
+
 
 
 reboot

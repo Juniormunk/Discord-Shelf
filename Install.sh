@@ -45,11 +45,14 @@ pip3 install schedule
 pip3 install flask
 pip3 install NetworkManager
 
+sudo systemctl enable systemd-networkd.service systemd-networkd-wait-online.service
+
 wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main/Shelf.py
 
 
 printf "[Unit]
 Description=Discord Shelf
+After=network.target
 
 [Service]
 Type=simple
@@ -83,6 +86,8 @@ hostnamectl --pretty set-hostname "discordshelf"$CPUID
 sudo hostnamectl set-hostname "discordshelf"$CPUID
 
 sudo nmcli general hostname "discordshelf"$CPUID
+
+sed -i 's/# 127.0.1.1               raspberrypi/ 127.0.1.1               discordshelf${CPUID}/' /etc/comitup.conf
 
 
 

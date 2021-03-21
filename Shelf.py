@@ -24,11 +24,14 @@ app = Flask(__name__)
 
 
 
+
 class LightStatus(Enum):
     Loading = 1
     JSONError = 2
     Loaded = 3
     WIFIError = 4
+
+lightStatus = LightStatus.Loading
 
 def checkInternetUrllib(url='http://google.com', timeout=3):
     try:
@@ -100,12 +103,8 @@ def openConfig():
         logging.error(e)
         logging.error("Could not parsing json file!")
         lightStatus = LightStatus.JSONError
-        x.start()
-        while(True):
-            time.sleep(1)
             
 openConfig()
-
 
 lastBotToken = ""
 def getConfigBotToken():
@@ -143,7 +142,11 @@ def saveConfig():
         json.dump(config, outfile, indent = 2)
         outfile.close()
 
-lightStatus = LightStatus.Loading
+slots = getConfigSlots()
+
+
+if (lightStatus != LightStatus.JSONError):
+    lightStatus = LightStatus.Loading
 
 class Friend():
     class Status(Enum):
@@ -237,8 +240,6 @@ def lightThread():
                             pixels[i] = [60*brightness,0,0]
                         if(friend.status == friend.Status.IDError):
                             pixels[i] = [255*brightness,0,255*brightness]
-
-        
             
         if(lightStatus == LightStatus.Loading):
             for slot in slots:
@@ -252,7 +253,10 @@ def lightThread():
                     pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
         if(lightStatus == LightStatus.JSONError):
             updated_all=True
-            pixels[1] = [255*brightness*mod_brightness,0,0]
+            for slot in slots:
+                for i in slot:
+                    pixels[i] = [0,0,255*brightness*mod_brightness]
+            pixels[0] = [255*brightness*mod_brightness,0,0]
         if(lightStatus == LightStatus.Loading):
             updated_all=True
             for slot in slots:
@@ -267,13 +271,14 @@ def lightThread():
         
 x = threading.Thread(target=lightThread)
 
-slots = getConfigSlots()
-
 x.start()
 
+count = 0
 while(checkInternetUrllib()==False):
     time.sleep(1)
-    lightStatus = LightStatus.WIFIError
+    count+=1
+    if(count >= 25):
+        lightStatus = LightStatus.WIFIError
 
 
 @app.route('/', methods = ['POST', 'GET'])

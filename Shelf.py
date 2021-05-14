@@ -12,7 +12,6 @@ import threading
 import board
 import neopixel
 import Adafruit_ADS1x15
-import urllib.request
 from flask import Flask,render_template,request
 import NetworkManager
 
@@ -24,6 +23,10 @@ app = Flask(__name__)
 
 
 
+if os.path.exists("/boot/latest.log"):
+    os.remove("/boot/latest.log")
+
+logging.basicConfig(filename='/boot/latest.log',level=logging.ERROR)
 
 class LightStatus(Enum):
     Loading = 1
@@ -33,23 +36,25 @@ class LightStatus(Enum):
 
 lightStatus = LightStatus.Loading
 
-def checkInternetUrllib(url='http://google.com', timeout=3):
-    try:
-        urllib.request.urlopen(url, timeout=timeout)
-        return True
-    except Exception as e:
-        return False
+
+def checkInternet(url='google.com'):
+    response = os.system("ping -c 1 " + url)
+    # and then check the response...
+    if response == 0:
+        pingstatus = True
+    else:
+        pingstatus = False
+
+    return pingstatus
 
 pixels = neopixel.NeoPixel(board.D18, 30)
 
-if os.path.exists("/boot/latest.log"):
-    os.remove("/boot/latest.log")
 if not os.path.exists('/boot/shelf_config.json'):
     with open('/boot/shelf_config.json', 'w') as file:
         file.write('''{
   "Discord Bot Token": "",
   "Fade Speed": 0.01,
-  "Slots": [[1,2,3],[4,5,6],[7,8,9],[10,11,12]],
+  "Slots": [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14],[15,16,17],[18,19,20],[21,22,23]],
   "Guild ID": 0,
   "Users": [
     {
@@ -89,7 +94,7 @@ if not os.path.exists('/boot/shelf_config.json'):
 }''')
         file.close()
         
-logging.basicConfig(filename='/boot/latest.log',level=logging.ERROR)
+
 
         
 def openConfig():
@@ -116,7 +121,10 @@ def getGuild():
 def getConfigUserID(index):
     return config["Users"][index]["ID"]
 def getConfigSlots():
-    return config["Slots"]
+    try:
+        return config["Slots"]
+    except:
+        return [[0,1,2],[3,4,5]]
 def getConfigUserName(index):
     return str(config["Users"][index]["Name"])
 def getConfigUserSlot(index):
@@ -206,6 +214,7 @@ def lightThread():
             brightness = (adc.read_adc(0, gain=1)-26352)/-26352.0
         except:
             brightness = 1
+
         if brightness<.05:
             brightness = 0
         if brightness>.95:
@@ -240,28 +249,28 @@ def lightThread():
                             pixels[i] = [60*brightness,0,0]
                         if(friend.status == friend.Status.IDError):
                             pixels[i] = [255*brightness,0,255*brightness]
-            
-        if(lightStatus == LightStatus.Loading):
-            for slot in slots:
-                for i in slot:
-                    pixels[i] = [0,0,255*brightness*mod_brightness]
-        if(lightStatus == LightStatus.WIFIError):
-            updated_all=True
-            pixels[1] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
-            for slot in slots:
-                for i in slot:
-                    pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
-        if(lightStatus == LightStatus.JSONError):
-            updated_all=True
-            for slot in slots:
-                for i in slot:
-                    pixels[i] = [0,0,255*brightness*mod_brightness]
-            pixels[0] = [255*brightness*mod_brightness,0,0]
-        if(lightStatus == LightStatus.Loading):
-            updated_all=True
-            for slot in slots:
-                for i in slot:
-                    pixels[i] = [0,0,255*brightness*mod_brightness]
+                
+            if(lightStatus == LightStatus.Loading):
+                for slot in slots:
+                    for i in slot:
+                        pixels[i] = [0,0,255*brightness*mod_brightness]
+            if(lightStatus == LightStatus.WIFIError):
+                updated_all=True
+                pixels[1] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
+                for slot in slots:
+                    for i in slot:
+                        pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
+            if(lightStatus == LightStatus.JSONError):
+                updated_all=True
+                for slot in slots:
+                    for i in slot:
+                        pixels[i] = [255*brightness*mod_brightness,0,0]
+                pixels[0] = [255*brightness*mod_brightness,0,0]
+            if(lightStatus == LightStatus.Loading):
+                updated_all=True
+                for slot in slots:
+                    for i in slot:
+                        pixels[i] = [0,0,255*brightness*mod_brightness]
         if not updated_all:
             for i in range(len(slots)):
                 if i not in slots_updated:
@@ -274,7 +283,7 @@ x = threading.Thread(target=lightThread)
 x.start()
 
 count = 0
-while(checkInternetUrllib()==False):
+while(checkInternet()==False):
     time.sleep(1)
     count+=1
     if(count >= 25):
@@ -467,7 +476,13 @@ def updateFriendStatus():
         else:
             friend.status = friend.Status.IDError
 
+def checkInternetConnection():
+    if(checkInternet()==False):
+        lightStatus = LightStatus.WIFIError
+    else:
+        lightStatus = LightStatus.Loaded
 
+        
 def loadConfig():
     friends.clear();
     for i in range(0, len(config["Users"])):
@@ -495,11 +510,6 @@ def loadConfig():
 
 def loop():
     updateFriendStatus()
-    if(checkInternetUrllib()==False):
-        time.sleep(1)
-        lightStatus = LightStatus.WIFIError
-    else:
-        lightStatus = LightStatus.Loaded
 
 @client.event
 async def on_ready():
@@ -512,7 +522,9 @@ async def on_ready():
 
 
     schedule.every(120).seconds.do(loop)
+    schedule.every(60).seconds.do(checkInternetConnection)
     schedule.every(20).minutes.do(updateUsernames)
+    
     lightStatus = LightStatus.Loaded
     
     while True:

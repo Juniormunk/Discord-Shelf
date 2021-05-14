@@ -53,6 +53,7 @@ wget -O Shelf.py https://raw.githubusercontent.com/Juniormunk/Discord-Shelf/main
 printf "[Unit]
 Description=Discord Shelf
 After=network.target
+Wants=network-online.target
 
 [Service]
 Type=simple

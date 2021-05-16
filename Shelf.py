@@ -14,28 +14,27 @@ import neopixel
 import Adafruit_ADS1x15
 from flask import Flask,render_template,request
 import NetworkManager
+import multiprocessing
+from random import randrange
 
 
 
+global lightStatus
+global client
+global y
+intents = discord.Intents.all()
+client = discord.Client(intents=intents)
 config = None
-slots = None
+lastBotToken = ""
+global slots
+friends = []
 app = Flask(__name__)
-
-
-
-if os.path.exists("/boot/latest.log"):
-    os.remove("/boot/latest.log")
-
-logging.basicConfig(filename='/boot/latest.log',level=logging.ERROR)
 
 class LightStatus(Enum):
     Loading = 1
     JSONError = 2
     Loaded = 3
     WIFIError = 4
-
-lightStatus = LightStatus.Loading
-
 
 def checkInternet(url='google.com'):
     response = os.system("ping -c 1 " + url)
@@ -47,56 +46,6 @@ def checkInternet(url='google.com'):
 
     return pingstatus
 
-pixels = neopixel.NeoPixel(board.D18, 30)
-
-if not os.path.exists('/boot/shelf_config.json'):
-    with open('/boot/shelf_config.json', 'w') as file:
-        file.write('''{
-  "Discord Bot Token": "",
-  "Fade Speed": 0.01,
-  "Slots": [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14],[15,16,17],[18,19,20],[21,22,23]],
-  "Guild ID": 0,
-  "Users": [
-    {
-      "Name": "",
-      "ID": -1,
-      "Slot": -1,
-      "ShowMobileStatus": false,
-      "FavoriteGames": [
-        "",
-        "",
-        ""
-      ]
-    },
-    {
-      "Name": "",
-      "ID": -1,
-      "Slot": -1,
-      "ShowMobileStatus": false,
-      "FavoriteGames": [
-        "",
-        "",
-        ""
-      ]
-    },
-    {
-      "Name": "",
-      "ID": -1,
-      "Slot": -1,
-      "ShowMobileStatus": false,
-      "FavoriteGames": [
-        "",
-        "",
-        ""
-      ]
-    }
-  ]
-}''')
-        file.close()
-        
-
-
-        
 def openConfig():
     global config
     global lightStatus
@@ -109,9 +58,6 @@ def openConfig():
         logging.error("Could not parsing json file!")
         lightStatus = LightStatus.JSONError
             
-openConfig()
-
-lastBotToken = ""
 def getConfigBotToken():
     return config["Discord Bot Token"]
 def getConfigGuildID():
@@ -150,12 +96,6 @@ def saveConfig():
         json.dump(config, outfile, indent = 2)
         outfile.close()
 
-slots = getConfigSlots()
-
-
-if (lightStatus != LightStatus.JSONError):
-    lightStatus = LightStatus.Loading
-
 class Friend():
     class Status(Enum):
         Online = 1
@@ -191,10 +131,9 @@ class Friend():
             return True
         else:
             return False
- 
-friends = []
 
 def lightThread():
+    global lightStatus
     adc = Adafruit_ADS1x15.ADS1115()
     mod_brightness = .5
     direction = -1
@@ -229,37 +168,40 @@ def lightThread():
 
         slots_updated = []
         updated_all = False
-            
-        if(lightStatus == LightStatus.Loaded):
-            for friend in friends:
-                if((friend.slot>=0) and friend.slot<len(slots)):
-                    for i in slots[friend.slot]:
-                        slots_updated.append(friend.slot)
-                        if(friend.status == friend.Status.Online):
-                            pixels[i] = [0,0,255*brightness]
-                        if(friend.status == friend.Status.Offline):
-                            pixels[i] = [0,0,0]
-                        if(friend.status == friend.Status.Away):
-                            pixels[i] = [255*brightness,255*brightness,0]
-                        if(friend.status == friend.Status.Favgame):
-                            pixels[i] = [0,255*brightness*mod_brightness,0]
-                        if(friend.status == friend.Status.Ingame):
-                            pixels[i] = [0,255*brightness,0]
-                        if(friend.status == friend.Status.Dnd):
-                            pixels[i] = [60*brightness,0,0]
-                        if(friend.status == friend.Status.IDError):
-                            pixels[i] = [255*brightness,0,255*brightness]
-                
+
+        logging.error(lightStatus)
+
+        if(lightStatus == LightStatus.WIFIError):
+            updated_all=True
+            pixels[1] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
+            for slot in slots:
+                for i in slot:
+                    pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
+        else:
+            if(lightStatus == LightStatus.Loaded):
+                for friend in friends:
+                    if((friend.slot>=0) and friend.slot<len(slots)):
+                        for i in slots[friend.slot]:
+                            slots_updated.append(friend.slot)
+                            if(friend.status == friend.Status.Online):
+                                pixels[i] = [0,0,255*brightness]
+                            if(friend.status == friend.Status.Offline):
+                                pixels[i] = [0,0,0]
+                            if(friend.status == friend.Status.Away):
+                                pixels[i] = [255*brightness,255*brightness,0]
+                            if(friend.status == friend.Status.Favgame):
+                                pixels[i] = [0,255*brightness*mod_brightness,0]
+                            if(friend.status == friend.Status.Ingame):
+                                pixels[i] = [0,255*brightness,0]
+                            if(friend.status == friend.Status.Dnd):
+                                pixels[i] = [60*brightness,0,0]
+                            if(friend.status == friend.Status.IDError):
+                                pixels[i] = [255*brightness,0,255*brightness]
+                    
             if(lightStatus == LightStatus.Loading):
                 for slot in slots:
                     for i in slot:
                         pixels[i] = [0,0,255*brightness*mod_brightness]
-            if(lightStatus == LightStatus.WIFIError):
-                updated_all=True
-                pixels[1] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
-                for slot in slots:
-                    for i in slot:
-                        pixels[i] = [255*brightness*mod_brightness,0,255*brightness*mod_brightness]
             if(lightStatus == LightStatus.JSONError):
                 updated_all=True
                 for slot in slots:
@@ -278,17 +220,6 @@ def lightThread():
                         pixels[x] = [0,0,0]
         time.sleep(.01);
         
-x = threading.Thread(target=lightThread)
-
-x.start()
-
-count = 0
-while(checkInternet()==False):
-    time.sleep(1)
-    count+=1
-    if(count >= 25):
-        lightStatus = LightStatus.WIFIError
-
 
 @app.route('/', methods = ['POST', 'GET'])
 def homePage():
@@ -438,14 +369,6 @@ def logPage():
 def serverThread():
     app.run(host='0.0.0.0', port=80)
 
-y = threading.Thread(target=serverThread)
-
-y.start()
-
-intents = intents = discord.Intents.all()
-client = discord.Client(intents=intents)
-        
-lightStatus = LightStatus.Loading
 
 def updateUsernames():
     for friend in friends:
@@ -477,12 +400,20 @@ def updateFriendStatus():
             friend.status = friend.Status.IDError
 
 def checkInternetConnection():
+    global lightStatus
+    global y
     if(checkInternet()==False):
         lightStatus = LightStatus.WIFIError
+        if(y.is_alive()):
+            y.terminate()
+            y.join()
     else:
         lightStatus = LightStatus.Loaded
+        if(not(y.is_alive())):
+            y = multiprocessing.Process(target=serverThread)
+            y.start()
 
-        
+            
 def loadConfig():
     friends.clear();
     for i in range(0, len(config["Users"])):
@@ -522,29 +453,101 @@ async def on_ready():
 
 
     schedule.every(120).seconds.do(loop)
-    schedule.every(60).seconds.do(checkInternetConnection)
     schedule.every(20).minutes.do(updateUsernames)
     
     lightStatus = LightStatus.Loaded
     
     while True:
         schedule.run_pending()
+        checkInternetConnection()
         await asyncio.sleep(1)
 
 @client.event
 async def on_member_update(before, after):
     updateFriendStatus()
 
+if __name__ == '__main__':
+    os.system('sudo hostnamectl set-hostname discordshelf')
+    
+    if os.path.exists("/boot/latest.log"):
+        os.remove("/boot/latest.log")
+    logging.basicConfig(filename='/boot/latest.log',level=logging.ERROR)
+    global lightStatus
+    lightStatus = LightStatus.Loading
+    pixels = neopixel.NeoPixel(board.D18, 30)
+    if not os.path.exists('/boot/shelf_config.json'):
+        with open('/boot/shelf_config.json', 'w') as file:
+            file.write('''{
+      "Discord Bot Token": "",
+      "Fade Speed": 0.01,
+      "Slots": [[0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14],[15,16,17],[18,19,20],[21,22,23]],
+      "Guild ID": 0,
+      "Users": [
+        {
+          "Name": "",
+          "ID": -1,
+          "Slot": -1,
+          "ShowMobileStatus": false,
+          "FavoriteGames": [
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "Name": "",
+          "ID": -1,
+          "Slot": -1,
+          "ShowMobileStatus": false,
+          "FavoriteGames": [
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "Name": "",
+          "ID": -1,
+          "Slot": -1,
+          "ShowMobileStatus": false,
+          "FavoriteGames": [
+            "",
+            "",
+            ""
+          ]
+        }
+      ]
+    }''')
+            file.close()
 
-lastBotToken = getConfigBotToken()
-if (getConfigBotToken()=="" or getConfigBotToken()==0):
-    lightStatus = LightStatus.JSONError
-    while True:
+    openConfig()
+    slots = getConfigSlots()
+    if (lightStatus != LightStatus.JSONError):
+        lightStatus = LightStatus.Loading
+
+    x = threading.Thread(target=lightThread)
+
+    x.start()
+
+    count = 0
+    while(checkInternet()==False):
         time.sleep(1)
-    
-client.run(getConfigBotToken())
-
-    
-
+        count = count+1
+        if(count >= 2):
+            lightStatus = LightStatus.WIFIError
 
 
+    y = multiprocessing.Process(target=serverThread)
+
+    y.start()
+            
+    lightStatus = LightStatus.Loading
+
+
+    lastBotToken = getConfigBotToken()
+    if (getConfigBotToken()=="" or getConfigBotToken()==0):
+        lightStatus = LightStatus.JSONError
+        while True:
+            time.sleep(1)
+
+    client.run(getConfigBotToken())

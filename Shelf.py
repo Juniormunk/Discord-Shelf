@@ -430,41 +430,48 @@ def updateUsernames():
                 friend.setName(friend.member.name)
 
 def updateFriendStatus():
-    for friend in friends:
-        if(friend.member != None):
-            if((friend.member.is_on_mobile()) and (friend.mobileStatus == False)):
-                continue
-            if(friend.member.status==discord.Status.online):
-                friend.status = friend.Status.Online
-            if(friend.member.status==discord.Status.idle):
-                friend.status = friend.Status.Away
-            if(friend.member.status==discord.Status.dnd):
-                friend.status = friend.Status.Dnd
-            if(friend.member.status==discord.Status.dnd):
-                friend.status = friend.Status.Dnd
-            if(friend.member.status==discord.Status.offline):
-                friend.status = friend.Status.Offline
-            if friend.member.activity !=None:
-                if friend.member.activity.type == discord.ActivityType.playing:
-                    friend.status = friend.Status.Ingame
-                    if(friend.isFavGame(friend.member.activity.name)):
-                        friend.status = friend.Status.Favgame
-        else:
-            friend.status = friend.Status.IDError
+    if(not(client.is_closed())):
+        lightStatus = LightStatus.Loaded
+        for friend in friends:
+            if(friend.member != None):
+                if((friend.member.is_on_mobile()) and (friend.mobileStatus == False)):
+                    continue
+                if(friend.member.status==discord.Status.online):
+                    friend.status = friend.Status.Online
+                if(friend.member.status==discord.Status.idle):
+                    friend.status = friend.Status.Away
+                if(friend.member.status==discord.Status.dnd):
+                    friend.status = friend.Status.Dnd
+                if(friend.member.status==discord.Status.dnd):
+                    friend.status = friend.Status.Dnd
+                if(friend.member.status==discord.Status.offline):
+                    friend.status = friend.Status.Offline
+                if friend.member.activity !=None:
+                    if friend.member.activity.type == discord.ActivityType.playing:
+                        friend.status = friend.Status.Ingame
+                        if(friend.isFavGame(friend.member.activity.name)):
+                            friend.status = friend.Status.Favgame
+            else:
+                friend.status = friend.Status.IDError
+    else:
+        lightStatus = LightStatus.WIFIError
 
 def checkInternetConnection():
     global lightStatus
     global y
-    if(checkInternet()==False):
-        lightStatus = LightStatus.WIFIError
-        if(y.is_alive()):
-            y.terminate()
-            y.join()
-    else:
-        lightStatus = LightStatus.Loaded
-        if(not(y.is_alive())):
-            y = multiprocessing.Process(target=serverThread)
-            y.start()
+    while(True):
+        if(checkInternet()==False):
+            time.sleep(5)
+            if(checkInternet()==False):
+                lightStatus = LightStatus.WIFIError
+                if(y.is_alive()):
+                    y.terminate()
+        else:
+            lightStatus = LightStatus.Loaded
+            if(not(y.is_alive())):
+                y = multiprocessing.Process(target=serverThread)
+                y.start()
+        time.sleep(30)
 
             
 def loadConfig():
@@ -492,9 +499,6 @@ def loadConfig():
                 if(friend.getID() == int(mem.id)):
                     friend.member = mem
 
-def loop():
-    updateFriendStatus()
-
 @client.event
 async def on_ready():
     global lightStatus
@@ -505,9 +509,8 @@ async def on_ready():
     updateFriendStatus()
 
 
-    schedule.every(120).seconds.do(loop)
+    schedule.every(120).seconds.do(updateFriendStatus)
     schedule.every(20).minutes.do(updateUsernames)
-    schedule.every(30).seconds.do(checkInternetConnection)
     
     lightStatus = LightStatus.Loaded
     
@@ -582,6 +585,10 @@ if __name__ == '__main__':
     x = threading.Thread(target=lightThread)
     x.setDaemon(True)
     x.start()
+
+    z = threading.Thread(target=checkInternetConnection)
+    z.setDaemon(True)
+    z.start()
 
     count = 0
     while(checkInternet()==False):

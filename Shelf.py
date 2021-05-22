@@ -22,6 +22,7 @@ from random import randrange
 global lightStatus
 global client
 global y
+global pixels
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 config = None
@@ -36,7 +37,7 @@ class LightStatus(Enum):
     Loaded = 3
     WIFIError = 4
 
-def checkInternet(url='google.com'):
+def checkInternet(url='8.8.8.8'):
     response = os.system("ping -c 1 " + url)
     # and then check the response...
     if response == 0:
@@ -94,8 +95,10 @@ def getConfigFadeSpeed():
 def saveConfig():
     with open('/boot/shelf_config.json', 'w') as outfile:
         json.dump(config, outfile, indent = 2)
+        outfile.flush()
+        os.fsync(outfile.fileno())
         outfile.close()
-
+        
 class Friend():
     class Status(Enum):
         Online = 1
@@ -168,8 +171,6 @@ def lightThread():
 
         slots_updated = []
         updated_all = False
-
-        logging.error(lightStatus)
 
         if(lightStatus == LightStatus.WIFIError):
             updated_all=True
@@ -365,7 +366,59 @@ def logPage():
             log = infile.read()
             infile.close()
     return log
-    
+@app.route('/lights')
+def lightsPage():
+    global lightStatus
+    global friends
+    lights = ""
+    lights += "<html>"
+    lights += "<head>"
+    lights += '''<link rel="icon" type="image/svg+xml" href="http://discord.com/assets/41484d92c876f76b20c7f746221e8151.svg">'''
+    lights += "<title>Discord Shelf</title>"
+    lights += '''<style>
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+</style>'''
+    lights += "</head>"
+    lights += '''<body>'''
+    lights += lightStatus.name
+    lights += "<center>"
+    lights += '''<div id="container">'''
+    lights += '''<table>    <colgroup>'''
+    for i in range(len(slots)):
+        lights += '''<col span="1" style="width: '''
+        lights += str(100/len(slots))
+        lights += '''%;">'''
+    lights += '''</colgroup><tr>'''
+    for friend in friends:
+        lights+= '''<td><center>'''
+        lights+= friend.member.name
+        lights+= '''<br>'''
+        lights+= friend.member.status
+        lights+= '''</td></center>'''
+    lights += ''' </tr><tr>'''
+    for i in range(len(slots)):
+        x = slots[i][0]:
+        lights+= '''<td><center>'''
+        lights += '''<svg height="30" width="100%" viewBox="0 0 200 30" preserveAspectRatio="none"> <polygon points="0,0 200,0 200,30 0,30" style="fill:rgb('''
+        lights += str(pixels[x][0])
+        lights += ''','''
+        lights += str(pixels[x][1])
+        lights += ''','''
+        lights += str(pixels[x][2])
+        lights += ''');stroke:gray;stroke-width:5" />Sorry, your browser does not support inline SVG.</svg>'''
+        lights += ''' </center></td>'''
+    lights += '''</tr>'''
+    lights += '''</table>'''
+    lights += '''</div>'''
+    lights += "</center>"
+    lights += "</body>"
+    lights += "</html>"
+    return lights
 def serverThread():
     app.run(host='0.0.0.0', port=80)
 
@@ -454,12 +507,12 @@ async def on_ready():
 
     schedule.every(120).seconds.do(loop)
     schedule.every(20).minutes.do(updateUsernames)
+    schedule.every(30).seconds.do(checkInternetConnection)
     
     lightStatus = LightStatus.Loaded
     
     while True:
         schedule.run_pending()
-        checkInternetConnection()
         await asyncio.sleep(1)
 
 @client.event
@@ -473,6 +526,7 @@ if __name__ == '__main__':
         os.remove("/boot/latest.log")
     logging.basicConfig(filename='/boot/latest.log',level=logging.ERROR)
     global lightStatus
+    global pixels
     lightStatus = LightStatus.Loading
     pixels = neopixel.NeoPixel(board.D18, 30)
     if not os.path.exists('/boot/shelf_config.json'):
@@ -526,7 +580,7 @@ if __name__ == '__main__':
         lightStatus = LightStatus.Loading
 
     x = threading.Thread(target=lightThread)
-
+    x.setDaemon(True)
     x.start()
 
     count = 0
@@ -538,7 +592,7 @@ if __name__ == '__main__':
 
 
     y = multiprocessing.Process(target=serverThread)
-
+    y.daemon = True
     y.start()
             
     lightStatus = LightStatus.Loading
@@ -551,3 +605,11 @@ if __name__ == '__main__':
             time.sleep(1)
 
     client.run(getConfigBotToken())
+
+
+
+
+    
+
+
+

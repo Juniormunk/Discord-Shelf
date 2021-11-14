@@ -356,20 +356,25 @@ def lightThread():
                         for i in slots[friend.slot]:
                             slots_updated.append(friend.slot)
                             if(friend.status == friend.Status.Online):
-                                pixels[i] = [0, 0, 255*brightness*brightnesstimemodifier]
+                                pixels[i] = [0, 0, 255*brightness *
+                                             brightnesstimemodifier]
                             if(friend.status == friend.Status.Offline):
                                 pixels[i] = [0, 0, 0]
                             if(friend.status == friend.Status.Away):
-                                pixels[i] = [255*brightness*brightnesstimemodifier, 255*brightness*brightnesstimemodifier, 0]
+                                pixels[i] = [255*brightness*brightnesstimemodifier,
+                                             255*brightness*brightnesstimemodifier, 0]
                             if(friend.status == friend.Status.Favgame):
                                 pixels[i] = [
                                     0, 255*brightness*mod_brightness*brightnesstimemodifier, 0]
                             if(friend.status == friend.Status.Ingame):
-                                pixels[i] = [0, 255*brightness*brightnesstimemodifier, 0]
+                                pixels[i] = [0, 255*brightness *
+                                             brightnesstimemodifier, 0]
                             if(friend.status == friend.Status.Dnd):
-                                pixels[i] = [60*brightness*brightnesstimemodifier, 0, 0]
+                                pixels[i] = [60*brightness *
+                                             brightnesstimemodifier, 0, 0]
                             if(friend.status == friend.Status.IDError):
-                                pixels[i] = [255*brightness*brightnesstimemodifier, 0, 255*brightness]
+                                pixels[i] = [255*brightness *
+                                             brightnesstimemodifier, 0, 255*brightness]
 
             if(lightStatus == LightStatus.Loading):
                 updated_all = True
@@ -462,6 +467,7 @@ def homePage():
 
         if request.method == 'POST':
             if request.form.get('reboot'):
+
                 output += '''<h1 style="color:RED;">Rebooting...</h1>'''
                 os.system('sudo reboot')
             if not(request.form.get('reboot')):
@@ -598,7 +604,7 @@ def checkInternetConnection():
                 if(y.is_alive()):
                     y.terminate()
         else:
-            if(lightStatus==LightStatus.WIFIError):
+            if(lightStatus == LightStatus.WIFIError):
                 lightStatus = LightStatus.Loaded
             if(not(y.is_alive())):
                 y = multiprocessing.Process(target=serverThread)
@@ -771,6 +777,7 @@ if __name__ == '__main__':
             }''')
             file.close()
     openConfig()
+
     slots = getConfigSlots()
     if (lightStatus != LightStatus.JSONError):
         lightStatus = LightStatus.Loading
